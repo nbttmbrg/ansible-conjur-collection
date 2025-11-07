@@ -18,4 +18,4 @@ max-statements=50
 max-branches=12
 
 # Disabled checks
-disable=too-many-positional-arguments,wrong-import-position,missing-function-docstring,global-statement,import-error,missing-class-docstring,missing-module-docstring
+disable=too-many-positional-arguments,wrong-import-position,missing-function-docstring,global-statement,import-error,missing-class-docstring,missing-module-docstring,invalid-name

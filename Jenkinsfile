@@ -90,6 +90,16 @@ pipeline {
         }
       }
     }
+
+    stage('Build artifacts') {
+      steps {
+        script {
+          INFRAPOOL_EXECUTORV2_AGENT_1.agentSh './ci/build_release'
+          INFRAPOOL_EXECUTORV2_AGENT_1.agentArchiveArtifacts artifacts: 'cyberark-conjur-*.tar.gz', fingerprint: true
+        }
+      }
+    }
+
     stage ('Run conjur_variable unit tests') {
       steps {
         script {
@@ -585,13 +595,6 @@ pipeline {
               INFRAPOOL_AZURE_EXECUTORV2_AGENT_1.agentSh 'summon ./ci/test.sh -u azure -d -t conjur_variable'
             }
           }
-        }
-      }
-    }
-    stage('Build artifacts') {
-      steps {
-        script {
-          INFRAPOOL_EXECUTORV2_AGENT_1.agentSh './ci/build_release'
         }
       }
     }

@@ -12,6 +12,8 @@ dev/conjur.pem
 dev/access_token
 dev/tmp
 
+build/
+
 **/test-files/output
 bot
 coverage
