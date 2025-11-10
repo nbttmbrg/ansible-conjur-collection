@@ -8,8 +8,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [1.3.9] - 2025-11-10
 
-## Security
+### Security
 - Updated Ubuntu base image in dev/test_app_ubuntu to latest and nginx base image in dev/Dockerfile_nginx to 1.28.0-alpine-slim (CNJR-11776)
+
+### Added
+- Added `close-stale.yml` GitHub workflow
 
 ## [1.3.8] - 2025-09-30
 
@@ -155,7 +158,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Migrated code from Ansible conjur_variable lookup plugin
 - Added support to configure the use of the plugin via environment variables
 
-[Unreleased]: https://github.com/cyberark/ansible-conjur-collection/compare/v1.3.8...HEAD
+[Unreleased]: https://github.com/cyberark/ansible-conjur-collection/compare/v1.3.9...HEAD
+[1.3.9]: https://github.com/cyberark/ansible-conjur-collection/compare/v1.3.8...v1.3.9
 [1.3.8]: https://github.com/cyberark/ansible-conjur-collection/compare/v1.3.7...v1.3.8
 [1.3.7]: https://github.com/cyberark/ansible-conjur-collection/compare/v1.3.6...v1.3.7
 [1.3.6]: https://github.com/cyberark/ansible-conjur-collection/compare/v1.3.3...v1.3.6
