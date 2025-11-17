@@ -367,11 +367,15 @@ function main() {
   clean
   mkdir -p tmp
 
-  # build the ansible-conjur-collection
   repo_dir=$(git rev-parse --show-toplevel)
-  $repo_dir/ci/build_release
   archive_name=$(find $repo_dir -name "cyberark-conjur-*tar.gz")
-  test -f "$archive_name" && mv "$archive_name" "$(dev_dir)"
+
+  # if archive doesn't exist, run build script
+  if [ -z "$archive_name" ]; then
+    $repo_dir/ci/build_release
+    archive_name=$(find $repo_dir -name "cyberark-conjur-*tar.gz")
+  fi
+  test -f "$archive_name" && cp "$archive_name" "$(dev_dir)"
   
   replaceTemplates
 
