@@ -1009,9 +1009,11 @@ class LookupModule(LookupBase):
                 backend=default_backend()
             )
             key = b64encode(kdf.derive(machine_id))
+            display.vvv(f"Encryption key generated successfully")
             return Fernet(key)
-        except Exception:  # pylint: disable=broad-except
+        except Exception as e:  # pylint: disable=broad-except
             # Fallback: use a basic key if advanced crypto fails
+            display.vvv(f"Failed to generate encryption key: {str(e)}")
             return None
 
     @classmethod
@@ -1029,8 +1031,9 @@ class LookupModule(LookupBase):
                     return pickle.loads(decrypted_data)
                 elif encrypted_data:
                     # Fallback for unencrypted data (backward compatibility)
-                    return pickle.load(f)
-            except Exception:  # pylint: disable=broad-except
+                    return pickle.loads(encrypted_data)
+            except Exception as e:  # pylint: disable=broad-except
+                display.vvv(f"Failed to load cache: {str(e)}")
                 return {}
         return {}
 
@@ -1046,14 +1049,16 @@ class LookupModule(LookupBase):
                 encrypted_data = cipher.encrypt(serialized_data)
                 with open(cls._cache_file, 'wb') as f:
                     f.write(encrypted_data)
+                display.vvv(f"Cache saved (encrypted) to {cls._cache_file}")
             else:
                 # Fallback: save unencrypted if encryption fails
                 with open(cls._cache_file, 'wb') as f:
                     f.write(serialized_data)
+                display.vvv(f"Cache saved (unencrypted) to {cls._cache_file}")
             
             os.chmod(cls._cache_file, S_IRUSR | S_IWUSR)
-        except Exception:  # pylint: disable=broad-except
-            pass
+        except Exception as e:  # pylint: disable=broad-except
+            display.vvv(f"Failed to save cache: {str(e)}")
 
     def run(self, terms, variables=None, **kwargs):  # pylint: disable=too-many-locals,missing-function-docstring,too-many-branches,too-many-statements
         if terms == []:
