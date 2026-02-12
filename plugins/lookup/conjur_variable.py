@@ -207,6 +207,7 @@ import traceback
 import ssl
 import re
 import shutil
+import pickle
 from base64 import b64encode
 from netrc import netrc
 from time import sleep
@@ -227,6 +228,9 @@ from ansible.utils.display import Display
 try:
     from cryptography.x509 import load_pem_x509_certificate
     from cryptography.hazmat.backends import default_backend
+    from cryptography.fernet import Fernet
+    from cryptography.hazmat.primitives import hashes
+    from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2
 except ImportError:
     cryptography_import_error = traceback.format_exc()
 else:
@@ -983,8 +987,73 @@ def _fetch_conjur_gcp_identity_token(
 
 
 class LookupModule(LookupBase):
-    # Class-level cache for storing retrieved variable values
-    _variable_cache = {}
+    # File-based cache that persists across Ansible tasks/processes
+    _cache_file = os.path.join(gettempdir(), 'ansible_conjur_cache.pkl')
+
+    @classmethod
+    def _get_encryption_key(cls):
+        """Generate a machine-specific encryption key."""
+        # Use machine-specific identifiers to generate a deterministic key
+        try:
+            import platform
+            import uuid
+            # Combine multiple machine identifiers
+            machine_id = f"{platform.node()}-{uuid.getnode()}".encode()
+            
+            # Derive a key using PBKDF2
+            kdf = PBKDF2(
+                algorithm=hashes.SHA256(),
+                length=32,
+                salt=b'ansible-conjur-cache-salt',  # Static salt for deterministic key
+                iterations=100000,
+                backend=default_backend()
+            )
+            key = b64encode(kdf.derive(machine_id))
+            return Fernet(key)
+        except Exception:  # pylint: disable=broad-except
+            # Fallback: use a basic key if advanced crypto fails
+            return None
+
+    @classmethod
+    def _load_cache(cls):
+        """Load and decrypt cache from file."""
+        if os.path.exists(cls._cache_file):
+            try:
+                cipher = cls._get_encryption_key()
+                with open(cls._cache_file, 'rb') as f:
+                    encrypted_data = f.read()
+                
+                if cipher and encrypted_data:
+                    # Decrypt the data
+                    decrypted_data = cipher.decrypt(encrypted_data)
+                    return pickle.loads(decrypted_data)
+                elif encrypted_data:
+                    # Fallback for unencrypted data (backward compatibility)
+                    return pickle.load(f)
+            except Exception:  # pylint: disable=broad-except
+                return {}
+        return {}
+
+    @classmethod
+    def _save_cache(cls, cache):
+        """Encrypt and save cache to file."""
+        try:
+            cipher = cls._get_encryption_key()
+            serialized_data = pickle.dumps(cache)
+            
+            if cipher:
+                # Encrypt the data
+                encrypted_data = cipher.encrypt(serialized_data)
+                with open(cls._cache_file, 'wb') as f:
+                    f.write(encrypted_data)
+            else:
+                # Fallback: save unencrypted if encryption fails
+                with open(cls._cache_file, 'wb') as f:
+                    f.write(serialized_data)
+            
+            os.chmod(cls._cache_file, S_IRUSR | S_IWUSR)
+        except Exception:  # pylint: disable=broad-except
+            pass
 
     def run(self, terms, variables=None, **kwargs):  # pylint: disable=too-many-locals,missing-function-docstring,too-many-branches,too-many-statements
         if terms == []:
@@ -1089,12 +1158,13 @@ class LookupModule(LookupBase):
 
         # Check cache if cacheable is enabled
         if cacheable:
+            cache = self._load_cache()
             cache_key = f"{conf['appliance_url']}|{terms[0]}"
             display.vvv(f"Cache enabled. Cache key: {cache_key}")
-            display.vvv(f"Current cache size: {len(LookupModule._variable_cache)} entries")
-            if cache_key in LookupModule._variable_cache:
+            display.vvv(f"Current cache size: {len(cache)} entries")
+            if cache_key in cache:
                 display.vvv(f"Cache HIT: Retrieving variable {terms[0]} from cache")
-                cached_value = LookupModule._variable_cache[cache_key]
+                cached_value = cache[cache_key]
                 if as_file:
                     return _store_secret_in_file(cached_value)
                 return cached_value
@@ -1158,9 +1228,11 @@ class LookupModule(LookupBase):
 
             # Store in cache if cacheable is enabled
             if cacheable:
+                cache = self._load_cache()
                 cache_key = f"{conf['appliance_url']}|{terms[0]}"
-                LookupModule._variable_cache[cache_key] = conjur_variable
-                display.vvv(f"Stored variable {terms[0]} in cache (total entries: {len(LookupModule._variable_cache)})")
+                cache[cache_key] = conjur_variable
+                self._save_cache(cache)
+                display.vvv(f"Stored variable {terms[0]} in cache (total entries: {len(cache)})")
         finally:
             if isinstance(token, bytes):
                 token = b"\x00" * len(token)
