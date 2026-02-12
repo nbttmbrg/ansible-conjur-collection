@@ -174,6 +174,14 @@ DOCUMENTATION = """
           - name: azure_client_id
         env:
           - name: AZURE_CLIENT_ID
+      cacheable:
+        description: >-
+          Enable caching of retrieved variable values. When set to true, the lookup result
+          will be cached and subsequent lookups for the same variable will return the cached
+          value without contacting Conjur. Cache is scoped per appliance URL, account, and variable path.
+        type: boolean
+        default: false
+        required: false
 """
 
 EXAMPLES = """
@@ -975,6 +983,8 @@ def _fetch_conjur_gcp_identity_token(
 
 
 class LookupModule(LookupBase):
+    # Class-level cache for storing retrieved variable values
+    _variable_cache = {}
 
     def run(self, terms, variables=None, **kwargs):  # pylint: disable=too-many-locals,missing-function-docstring,too-many-branches,too-many-statements
         if terms == []:
@@ -1008,6 +1018,7 @@ class LookupModule(LookupBase):
         validate_certs = self.get_option('validate_certs')
         conf_file = self.get_option('config_file')
         as_file = self.get_option('as_file')
+        cacheable = self.get_option('cacheable')
 
         if validate_certs is False:
             display.warning('Certificate validation has been disabled. Please enable with validate_certs option.')
@@ -1076,6 +1087,16 @@ class LookupModule(LookupBase):
             display.vvv(f"Using cert file path {conf['cert_file']}")
             cert_file = conf['cert_file']
 
+        # Check cache if cacheable is enabled
+        if cacheable:
+            cache_key = f"{conf['appliance_url']}|{conf['account']}|{terms[0]}"
+            if cache_key in LookupModule._variable_cache:
+                display.vvv(f"Retrieving variable {terms[0]} from cache")
+                cached_value = LookupModule._variable_cache[cache_key]
+                if as_file:
+                    return _store_secret_in_file(cached_value)
+                return cached_value
+
         try:
             token = None
             if 'authn_token_file' not in conf:
@@ -1130,6 +1151,12 @@ class LookupModule(LookupBase):
                 validate_certs,
                 cert_file
             )
+
+            # Store in cache if cacheable is enabled
+            if cacheable:
+                cache_key = f"{conf['appliance_url']}|{conf['account']}|{terms[0]}"
+                LookupModule._variable_cache[cache_key] = conjur_variable
+                display.vvv(f"Cached variable {terms[0]}")
         finally:
             if isinstance(token, bytes):
                 token = b"\x00" * len(token)
