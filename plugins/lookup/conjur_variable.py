@@ -230,7 +230,7 @@ try:
     from cryptography.hazmat.backends import default_backend
     from cryptography.fernet import Fernet
     from cryptography.hazmat.primitives import hashes
-    from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2
+    from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 except ImportError:
     cryptography_import_error = traceback.format_exc()
 else:
@@ -1000,8 +1000,8 @@ class LookupModule(LookupBase):
             # Combine multiple machine identifiers
             machine_id = f"{platform.node()}-{uuid.getnode()}".encode()
             
-            # Derive a key using PBKDF2
-            kdf = PBKDF2(
+            # Derive a key using PBKDF2HMAC
+            kdf = PBKDF2HMAC(
                 algorithm=hashes.SHA256(),
                 length=32,
                 salt=b'ansible-conjur-cache-salt',  # Static salt for deterministic key
