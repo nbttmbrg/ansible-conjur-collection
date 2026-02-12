@@ -1090,12 +1090,16 @@ class LookupModule(LookupBase):
         # Check cache if cacheable is enabled
         if cacheable:
             cache_key = f"{conf['appliance_url']}|{terms[0]}"
+            display.vvv(f"Cache enabled. Cache key: {cache_key}")
+            display.vvv(f"Current cache size: {len(LookupModule._variable_cache)} entries")
             if cache_key in LookupModule._variable_cache:
-                display.vvv(f"Retrieving variable {terms[0]} from cache")
+                display.vvv(f"Cache HIT: Retrieving variable {terms[0]} from cache")
                 cached_value = LookupModule._variable_cache[cache_key]
                 if as_file:
                     return _store_secret_in_file(cached_value)
                 return cached_value
+            else:
+                display.vvv(f"Cache MISS: Variable {terms[0]} not in cache, will fetch from Conjur")
 
         try:
             token = None
@@ -1156,7 +1160,7 @@ class LookupModule(LookupBase):
             if cacheable:
                 cache_key = f"{conf['appliance_url']}|{terms[0]}"
                 LookupModule._variable_cache[cache_key] = conjur_variable
-                display.vvv(f"Cached variable {terms[0]}")
+                display.vvv(f"Stored variable {terms[0]} in cache (total entries: {len(LookupModule._variable_cache)})")
         finally:
             if isinstance(token, bytes):
                 token = b"\x00" * len(token)
