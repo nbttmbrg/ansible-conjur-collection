@@ -1032,10 +1032,6 @@ class LookupModule(LookupBase):
         if authn_type in ("aws", "azure") and service_id is None:
             raise AnsibleError("[WARNING]: Please set the conjur_authn_service_id for AWS or Azure authenticator")
 
-        if not account:
-            display.vvv("No conjur account provided. Defaulting to 'conjur'.")
-            account = "conjur"
-
         conf = _merge_dictionaries(
             _load_conf_from_file(conf_file),
             {
@@ -1052,6 +1048,14 @@ class LookupModule(LookupBase):
             } if authn_token_file is not None
             else {}
         )
+
+        if not account:
+            display.vvv("No conjur account provided. Defaulting to 'conjur'.")
+            account = "conjur"
+
+        # Update conf with the final account value
+        if 'account' not in conf or not conf['account']:
+            conf['account'] = account
 
         if 'appliance_url' not in conf:
             raise AnsibleError(
