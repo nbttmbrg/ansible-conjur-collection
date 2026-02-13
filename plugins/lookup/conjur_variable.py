@@ -182,8 +182,10 @@ DOCUMENTATION = """
         ini:
           - section: conjur,
             key: use_cache
+        vars:
+          - name: conjur_use_cache
         env:
-            - name: CONJUR_USE_CACHE
+          - name: CONJUR_USE_CACHE
 """
 
 EXAMPLES = """
