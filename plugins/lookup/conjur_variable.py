@@ -174,14 +174,16 @@ DOCUMENTATION = """
           - name: azure_client_id
         env:
           - name: AZURE_CLIENT_ID
-      cacheable:
-        description: >-
-          Enable caching of retrieved variable values. When set to true, the lookup result
-          will be cached and subsequent lookups for the same variable will return the cached
-          value without contacting Conjur. Cache is scoped per appliance URL, account, and variable path.
+      use_cache:
+        description: Enable caching of retrieved variable values and alleviate the load on the Conjur server.
         type: boolean
         default: false
         required: false
+        ini:
+          - section: conjur,
+            key: use_cache
+        env:
+            - name: CONJUR_USE_CACHE
 """
 
 EXAMPLES = """
@@ -1092,7 +1094,7 @@ class LookupModule(LookupBase):
         validate_certs = self.get_option('validate_certs')
         conf_file = self.get_option('config_file')
         as_file = self.get_option('as_file')
-        cacheable = self.get_option('cacheable')
+        use_cache = self.get_option('use_cache')
 
         if validate_certs is False:
             display.warning('Certificate validation has been disabled. Please enable with validate_certs option.')
@@ -1161,8 +1163,8 @@ class LookupModule(LookupBase):
             display.vvv(f"Using cert file path {conf['cert_file']}")
             cert_file = conf['cert_file']
 
-        # Check cache if cacheable is enabled
-        if cacheable:
+        # Check cache if use_cache is enabled
+        if use_cache:
             cache = self._load_cache()
             cache_key = f"{conf['appliance_url']}|{terms[0]}"
             display.vvv(f"Cache enabled. Cache key: {cache_key}")
@@ -1231,9 +1233,8 @@ class LookupModule(LookupBase):
                 cert_file
             )
 
-            # Store in cache if cacheable is enabled
-            if cacheable:
-                cache = self._load_cache()
+            # Store in cache if use_cache is enabled
+            if use_cache:
                 cache_key = f"{conf['appliance_url']}|{terms[0]}"
                 cache[cache_key] = conjur_variable
                 self._save_cache(cache)
